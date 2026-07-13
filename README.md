@@ -8,17 +8,13 @@
 npm install --save-dev @maxpaulus/changelogger
 ```
 
-Add its explicit hook setup to the consumer project's `package.json`:
+Install the Git hook:
 
-```json
-{
-  "scripts": {
-    "prepare": "changelogger install"
-  }
-}
+```sh
+npx changelogger install
 ```
 
-Run `npm run prepare` once if dependencies are already installed. This adds a marked `changelogger` block to `.git/hooks/pre-commit` without replacing other hook commands. Run `changelogger install` again after changing hook tooling to refresh that block.
+This adds a marked `changelogger` block to `.git/hooks/pre-commit` without replacing other hook commands. Run `npx changelogger install` again after changing hook tooling to refresh that block.
 
 The generated hook runs `npx --no-install changelogger generate` before each commit. It only changes `CHANGELOG.md` when the staged `package.json` version differs from `HEAD`.
 
@@ -36,7 +32,7 @@ The staged version bump causes the hook to generate and stage a `CHANGELOG.md` e
 Refresh the hook manually with:
 
 ```sh
-npm run prepare
+npx changelogger install
 ```
 
 Generate an entry manually after staging a version bump with:
@@ -72,8 +68,8 @@ If LM Studio cannot be reached, changelogger writes the commit subjects instead,
 ## Commands
 
 ```sh
-changelogger install
-changelogger generate
+npx changelogger install
+npx changelogger generate
 ```
 
 `generate` must run inside a Git working tree.
