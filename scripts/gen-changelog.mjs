@@ -24,7 +24,7 @@ async function main() {
     const release = getReleaseVersion();
     if (!release) return;
 
-    console.log(`[changelog] version bump ${release.previous} -> ${release.next}`);
+    console.log(`[changelogger] version bump ${release.previous} -> ${release.next}`);
 
     const previousTag = getPreviousTag();
     const commits = [...getCommitSubjects(previousTag), getStagedCommitSubject()].filter(Boolean);
@@ -35,7 +35,7 @@ async function main() {
         `Staged diff:\n${getStagedDiff()}`,
     ].join("\n\n");
 
-    console.log(`[changelog] ${commits.length} commit(s), including staged commit, since ${previousTag ?? "start"}`);
+    console.log(`[changelogger] ${commits.length} commit(s), including staged commit, since ${previousTag ?? "start"}`);
 
     const summary = await summarizeOrFallback(changelogContext, changelogSource);
     const entry = formatEntry(release.next, summary);
@@ -43,7 +43,7 @@ async function main() {
     prependChangelogEntry(entry);
     git(["add", CHANGELOG_PATH]);
 
-    console.log(`[changelog] added ${release.next} entry to ${CHANGELOG_PATH}`);
+    console.log(`[changelogger] added ${release.next} entry to ${CHANGELOG_PATH}`);
 }
 
 function getReleaseVersion() {
@@ -109,7 +109,7 @@ async function summarizeOrFallback(context, fallback) {
     try {
         return await summarize(context);
     } catch (error) {
-        console.error(`[changelog] LMStudio unreachable (${error.message}); using raw commit list.`);
+        console.error(`[changelogger] LMStudio unreachable (${error.message}); using raw commit list.`);
         return fallback;
     }
 }
@@ -131,7 +131,7 @@ function prependChangelogEntry(entry) {
 async function summarize(commits) {
     const model = MODEL || (await detectModel());
 
-    console.log(`[changelog] summarizing with ${model} (may take a moment)...`);
+    console.log(`[changelogger] summarizing with ${model} (may take a moment)...`);
 
     const response = await fetchWithTimeout(`${LMSTUDIO_URL}/v1/chat/completions`, {
         method: "POST",
@@ -156,7 +156,7 @@ async function summarize(commits) {
 }
 
 async function detectModel() {
-    console.log("[changelog] resolving LMStudio model...");
+    console.log("[changelogger] resolving LMStudio model...");
 
     const response = await fetchWithTimeout(`${LMSTUDIO_URL}/v1/models`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
