@@ -5,6 +5,7 @@ import { main as generate } from "../scripts/gen-changelog.mjs";
 
 const START = "# >>> changelogger >>>";
 const END = "# <<< changelogger <<<";
+const PACKAGE_NAME = "@maxpaulus/changelogger";
 
 const command = process.argv[2];
 
@@ -20,7 +21,11 @@ if (command === "generate") {
 function install() {
     const repoRoot = git(["rev-parse", "--show-toplevel"]);
     const hookPath = `${repoRoot}/.git/hooks/pre-commit`;
-    const block = `${START}\nnpx --no-install changelogger generate\n${END}\n`;
+    const packageJson = JSON.parse(readFileSync(`${repoRoot}/package.json`, "utf8"));
+    const generateCommand = packageJson.name === PACKAGE_NAME
+        ? "node ./bin/changelogger.mjs generate"
+        : "npx --no-install changelogger generate";
+    const block = `${START}\n${generateCommand}\n${END}\n`;
     const existing = existsSync(hookPath) ? readFileSync(hookPath, "utf8") : "#!/bin/sh\n";
     const pattern = new RegExp(`${escapeRegExp(START)}[\\s\\S]*?${escapeRegExp(END)}\\n?`);
 

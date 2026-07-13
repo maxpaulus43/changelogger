@@ -102,3 +102,12 @@ test("adds and updates only its marked pre-commit hook block",  () => usingRepo(
     assert.equal((contents.match(/# >>> changelogger >>>/g) ?? []).length, 1);
     assert.match(contents, /npx --no-install changelogger generate/);
 }));
+
+test("uses the working-tree executable in changelogger itself", () => usingRepo({
+    config: { name: "@maxpaulus/changelogger" },
+}, (dir) => {
+    run(dir, "install");
+    const hook = readFileSync(join(dir, ".git", "hooks", "pre-commit"), "utf8");
+    assert.match(hook, /node \.\/bin\/changelogger\.mjs generate/);
+    assert.doesNotMatch(hook, /npx --no-install/);
+}));
