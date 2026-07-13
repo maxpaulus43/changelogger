@@ -19,12 +19,12 @@ function run(dir, command) {
     });
 }
 
-function repo({ changelog = "" } = {}) {
+function repo({ changelog = "", config = {} } = {}) {
     const dir = mkdtempSync(join(tmpdir(), "changelogger-"));
     git(dir, "init");
     git(dir, "config", "user.email", "test@example.com");
     git(dir, "config", "user.name", "Test User");
-    writeFileSync(join(dir, "package.json"), '{"version":"1.0.0"}\n');
+    writeFileSync(join(dir, "package.json"), `${JSON.stringify({ version: "1.0.0", ...config })}\n`);
     if (changelog) writeFileSync(join(dir, "CHANGELOG.md"), changelog);
     git(dir, "add", ".");
     git(dir, "commit", "-m", "Add initial feature");
@@ -32,7 +32,9 @@ function repo({ changelog = "" } = {}) {
 }
 
 function stageRelease(dir, version = "1.1.0") {
-    writeFileSync(join(dir, "package.json"), `{"version":"${version}"}\n`);
+    const packageJson = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    packageJson.version = version;
+    writeFileSync(join(dir, "package.json"), `${JSON.stringify(packageJson)}\n`);
     writeFileSync(join(dir, ".git", "COMMIT_EDITMSG"), "Release new capability\n");
     git(dir, "add", "package.json");
 }
@@ -73,7 +75,16 @@ test("preserves existing changelog entries", () => usingRepo({ changelog: "# Cha
     assert.ok(changelog.indexOf("## 1.1.0") < changelog.indexOf("## 1.0.0"));
 }));
 
-test("adds and updates only its marked pre-commit hook block", () => usingRepo({}, (dir) => {
+test("reads changelogPath from the consumer package.json", () => usingRepo({
+    config: { changelogger: { changelogPath: "docs/CHANGELOG.md" } },
+}, (dir) => {
+    stageRelease(dir);
+    run(dir, "generate");
+    assert.match(readFileSync(join(dir, "docs", "CHANGELOG.md"), "utf8"), /## 1.1.0/);
+    assert.equal(git(dir, "diff", "--cached", "--name-only").split("\n").includes("docs/CHANGELOG.md"), true);
+}));
+
+test("adds and updates only its marked pre-commit hook block",  () => usingRepo({}, (dir) => {
     const hook = join(dir, ".git", "hooks", "pre-commit");
     writeFileSync(hook, "#!/bin/sh\necho existing hook\n");
     run(dir, "install");

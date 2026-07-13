@@ -8,18 +8,17 @@
 // falls back to the raw commit subjects so the release always gets an entry.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
-const CHANGELOG_PATH = "CHANGELOG.md";
 const CHANGELOG_HEADER = "# Changelog\n\n";
 const MAINTENANCE_ENTRY = "- Maintenance and internal improvements.";
 
-const LMSTUDIO_URL = process.env.CHANGELOGGER_LMSTUDIO_URL ?? "http://localhost:1234";
-const MODEL = process.env.CHANGELOGGER_MODEL ?? ""; // empty = auto-detect the first loaded model
-const TIMEOUT_MS = Number(process.env.CHANGELOGGER_TIMEOUT_MS ?? 90_000);
+let settings;
 
 async function main() {
     process.chdir(git(["rev-parse", "--show-toplevel"]));
+    settings = readSettings();
 
     const release = getReleaseVersion();
     if (!release) return;
@@ -41,9 +40,9 @@ async function main() {
     const entry = formatEntry(release.next, summary);
 
     prependChangelogEntry(entry);
-    git(["add", CHANGELOG_PATH]);
+    git(["add", settings.changelogPath]);
 
-    console.log(`[changelogger] added ${release.next} entry to ${CHANGELOG_PATH}`);
+    console.log(`[changelogger] added ${release.next} entry to ${settings.changelogPath}`);
 }
 
 function getReleaseVersion() {
@@ -120,20 +119,21 @@ function formatEntry(version, summary) {
 }
 
 function prependChangelogEntry(entry) {
-    const existing = existsSync(CHANGELOG_PATH) ? readFileSync(CHANGELOG_PATH, "utf8") : "";
+    const existing = existsSync(settings.changelogPath) ? readFileSync(settings.changelogPath, "utf8") : "";
     const body = existing.startsWith(CHANGELOG_HEADER)
         ? existing.slice(CHANGELOG_HEADER.length)
         : existing.replace(/^#\s*Changelog.*\n+/, "");
 
-    writeFileSync(CHANGELOG_PATH, CHANGELOG_HEADER + entry + body);
+    mkdirSync(dirname(settings.changelogPath), { recursive: true });
+    writeFileSync(settings.changelogPath, CHANGELOG_HEADER + entry + body);
 }
 
 async function summarize(commits) {
-    const model = MODEL || (await detectModel());
+    const model = settings.model || (await detectModel());
 
     console.log(`[changelogger] summarizing with ${model} (may take a moment)...`);
 
-    const response = await fetchWithTimeout(`${LMSTUDIO_URL}/v1/chat/completions`, {
+    const response = await fetchWithTimeout(`${settings.endpoint}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +158,7 @@ async function summarize(commits) {
 async function detectModel() {
     console.log("[changelogger] resolving LMStudio model...");
 
-    const response = await fetchWithTimeout(`${LMSTUDIO_URL}/v1/models`);
+    const response = await fetchWithTimeout(`${settings.endpoint}/v1/models`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
@@ -170,7 +170,7 @@ async function detectModel() {
 
 async function fetchWithTimeout(url, options = {}) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), settings.timeoutMs);
 
     try {
         return await fetch(url, { ...options, signal: controller.signal });
@@ -191,6 +191,26 @@ function changelogPrompt() {
         "Max 6 bullets. Omit chores such as version bumps.",
         `If nothing user-facing, output: ${MAINTENANCE_ENTRY}`,
     ].join(" ");
+}
+
+function readSettings() {
+    const config = JSON.parse(readFileSync("package.json", "utf8")).changelogger ?? {};
+
+    return {
+        endpoint: cleanEndpoint(process.env.CHANGELOGGER_LMSTUDIO_URL ?? config.endpoint ?? "http://localhost:1234"),
+        model: process.env.CHANGELOGGER_MODEL ?? config.model ?? "",
+        timeoutMs: numberSetting(process.env.CHANGELOGGER_TIMEOUT_MS ?? config.timeoutMs, 90_000),
+        changelogPath: process.env.CHANGELOGGER_CHANGELOG_PATH ?? config.changelogPath ?? "CHANGELOG.md",
+    };
+}
+
+function cleanEndpoint(endpoint) {
+    return String(endpoint).replace(/\/$/, "");
+}
+
+function numberSetting(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : fallback;
 }
 
 function git(args) {

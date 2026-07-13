@@ -47,11 +47,25 @@ npx --no-install changelogger generate
 
 ## Configuration
 
-The defaults are LM Studio at `http://localhost:1234`, automatic model detection, and a 90-second request timeout. Override them with environment variables:
+Configure changelogger in the consumer project's `package.json`:
+
+```json
+{
+  "changelogger": {
+    "endpoint": "http://localhost:1234",
+    "model": "qwen2.5-7b-instruct",
+    "timeoutMs": 30000,
+    "changelogPath": "docs/CHANGELOG.md"
+  }
+}
+```
+
+All fields are optional. The defaults are LM Studio at `http://localhost:1234`, automatic model detection, a 90-second timeout, and `CHANGELOG.md` at the repository root. Environment variables take precedence over `package.json` values:
 
 - `CHANGELOGGER_LMSTUDIO_URL`
 - `CHANGELOGGER_MODEL`
 - `CHANGELOGGER_TIMEOUT_MS`
+- `CHANGELOGGER_CHANGELOG_PATH`
 
 If LM Studio cannot be reached, changelogger writes the commit subjects instead, so a release commit still receives an entry.
 

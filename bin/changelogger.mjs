@@ -28,7 +28,7 @@ function install() {
     writeFileSync(hookPath, pattern.test(existing) ? existing.replace(pattern, block) : `${existing.trimEnd()}\n\n${block}`);
     chmodSync(hookPath, 0o755);
 
-    console.log(`[changelog] installed pre-commit hook in ${hookPath}`);
+    console.log(`[changelogger] installed pre-commit hook in ${hookPath}`);
 }
 
 function git(args) {
