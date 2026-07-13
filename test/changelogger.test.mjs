@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { changelogPrompt } from "../scripts/gen-changelog.mjs";
 
 const cli = new URL("../bin/changelogger.mjs", import.meta.url).pathname;
 
@@ -47,6 +48,13 @@ function usingRepo(options, fn) {
         rmSync(dir, { recursive: true, force: true });
     }
 }
+
+test("prompt distinguishes removed and superseded implementation from release changes", () => {
+    const prompt = changelogPrompt();
+    assert.match(prompt, /final net effect/);
+    assert.match(prompt, /lines beginning with - are removed code/);
+    assert.match(prompt, /summarize only the replacement that remains/);
+});
 
 test("does nothing without a version bump", () => usingRepo({}, (dir) => {
     run(dir, "generate");

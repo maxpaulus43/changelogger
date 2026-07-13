@@ -29,6 +29,7 @@ async function main() {
     const commits = [...getCommitSubjects(previousTag), getStagedCommitSubject()].filter(Boolean);
     const changelogSource = changelogWorthy(commits);
     const changelogContext = [
+        `Package: ${settings.packageName}${settings.packageDescription ? ` — ${settings.packageDescription}` : ""}`,
         `Commit subjects:\n${changelogSource}`,
         `Committed diff:\n${getCommitDiff(previousTag)}`,
         `Staged diff:\n${getStagedDiff()}`,
@@ -188,15 +189,21 @@ function changelogPrompt() {
         "Output ONLY a Markdown bullet list of user-facing changes.",
         "No headers, no version line, no preamble, no code fences.",
         "One bullet per logical change, present-tense imperative.",
+        "Describe only the final net effect on the named package, not intermediate work from individual commits.",
+        "In diffs, lines beginning with - are removed code; never describe removed behavior as added or current.",
+        "If a later change replaces or removes an earlier implementation, summarize only the replacement that remains.",
         "Max 6 bullets. Omit chores such as version bumps.",
         `If nothing user-facing, output: ${MAINTENANCE_ENTRY}`,
     ].join(" ");
 }
 
 function readSettings() {
-    const config = JSON.parse(readFileSync("package.json", "utf8")).changelogger ?? {};
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+    const config = packageJson.changelogger ?? {};
 
     return {
+        packageName: packageJson.name ?? "unnamed package",
+        packageDescription: packageJson.description ?? "",
         endpoint: cleanEndpoint(process.env.CHANGELOGGER_LMSTUDIO_URL ?? config.endpoint ?? "http://localhost:1234"),
         model: process.env.CHANGELOGGER_MODEL ?? config.model ?? "",
         timeoutMs: numberSetting(process.env.CHANGELOGGER_TIMEOUT_MS ?? config.timeoutMs, 90_000),
@@ -217,4 +224,4 @@ function git(args) {
     return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
 
-export { main };
+export { changelogPrompt, main };
