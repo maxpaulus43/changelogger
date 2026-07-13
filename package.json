@@ -1,0 +1,24 @@
+{
+    "name": "@maxpaulus/changelogger",
+    "version": "0.3.0",
+    "description": "Generate changelog entries from release commits.",
+    "keywords": [
+        "changelog",
+        "git",
+        "release"
+    ],
+    "license": "MIT",
+    "bin": {
+        "changelogger": "./bin/changelogger.mjs"
+    },
+    "files": [
+        "bin/",
+        "scripts/"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "scripts": {
+        "test": "node --test test/**/*.test.mjs"
+    }
+}
